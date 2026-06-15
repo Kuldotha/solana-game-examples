@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Lumberjack.Accounts;
 using Solana.Unity.SDK;
 using Solana.Unity.Wallet.Bip39;
@@ -7,17 +8,15 @@ using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 /// <summary>
-/// Handles the connection to the players wallet.
+/// Handles the connection to the player's wallet.
 /// </summary>
 public class LoginScreen : MonoBehaviour
 {
     public Button LoginButton;
-    public Button LoginWalletAdapterButton;
     
-    void Start()
+    private void Start()
     {
         LoginButton.onClick.AddListener(OnEditorLoginClicked);
-        LoginWalletAdapterButton.onClick.AddListener(OnLoginWalletAdapterButtonClicked);
         AnchorService.OnPlayerDataChanged += OnPlayerDataChanged;
         AnchorService.OnInitialDataLoaded += UpdateContent;
     }
@@ -28,11 +27,6 @@ public class LoginScreen : MonoBehaviour
         AnchorService.OnInitialDataLoaded -= UpdateContent;
     }
 
-    private async void OnLoginWalletAdapterButtonClicked()
-    {
-        await Web3.Instance.LoginWalletAdapter();
-    }
-
     private void OnPlayerDataChanged(PlayerData playerData)
     {
         UpdateContent();
@@ -40,18 +34,23 @@ public class LoginScreen : MonoBehaviour
 
     private void UpdateContent()
     {
-        if (Web3.Account != null)
-        {
-            SceneManager.LoadScene("GameScene");
-        }
+        if (Web3.Account == null)
+            return;
+        
+        StartCoroutine(LoadScene());
+    }
+
+    private IEnumerator LoadScene()
+    {
+        InteractionBlocker.Instance.ShowBlocker();
+        yield return null;
+        SceneManager.LoadScene("GameScene");
     }
 
     private async void OnEditorLoginClicked()
     {
-        var newMnemonic = new Mnemonic(WordList.English, WordCount.Twelve);
-
-        // Dont use this one for production. Its only ment for editor login
-        var account = await Web3.Instance.LoginInGameWallet("1234") ??
-                      await Web3.Instance.CreateAccount(newMnemonic.ToString(), "1234");
+        // Don't use this one for production. It's only meant for editor login
+        _ = await Web3.Instance.LoginInGameWallet("1234") ??
+            await Web3.Instance.CreateAccount(new Mnemonic(WordList.English, WordCount.Twelve).ToString(), "1234");
     }
 }
